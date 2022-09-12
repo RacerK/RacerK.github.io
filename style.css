@@ -1,6 +1,6 @@
 body {
   font-size: 14px;
-  font-family: Arial;
+  font-family: Times New Roman;
 }
 
 h2 {
@@ -11,6 +11,7 @@ h2 {
 }
 
 h3 {
+  font-family: "Arial", serif;
   margin-top: 24px;
   margin-bottom: 4px;
 }
@@ -18,7 +19,7 @@ h3 {
 a, a:visited {
   font-weight: bold;
   text-decoration: none;
-  color: #800;
+  color: #0000FF;
   text-decoration: underline;
 }
 
@@ -31,7 +32,7 @@ a:hover {
 a:active {
   font-weight: bold;
   text-decoration: none;
-  color: #464646;
+  color: #0000FF;
 }
 
 table {
