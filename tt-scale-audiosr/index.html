@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.66.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,600" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
+  <link rel="stylesheet" href="../css/normalize.css">
+  <link rel="stylesheet" href="../css/skeleton.css">
+  <link rel="stylesheet" href="../css/custom.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  <link rel="alternate" href="index.xml" type="application/rss+xml" title="Speech Research">
+  <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
+  <title>Inference-time Scaling for Diffusion-based Audio Super-resolution</title>
+</head>
+
+<body rightmargin="150" leftmargin="150" topmargin="100" bottommargin="100" line-height:160%>
+  <font size="5">
+
+    <div class="container" style="padding-left: 0; padding-right: 0;" >
+
+      <header role="banner">
+
+      </header>
+      <main role="main">
+        <article itemscope itemtype="https://schema.org/BlogPosting">
+          <br></br>
+          <h1 itemprop="headline" align="center">
+            <font color="000093" size="7">Inference-time Scaling for Diffusion-based Audio Super-resolution</br>
+            </font>
+          </h1>
+          <br></br>
+          <p style="line-height:1" align="center"><b>
+              <font color="061E61">Yizhu Jin<sup>1</sup>, Zhen Ye<sup>1</sup>, Zeyue Tian<sup>1</sup>, Haohe Liu<sup>2</sup>, Qiuqiang Kong<sup>3</sup>, Yike Guo<sup>1</sup>, Wei Xue<sup>1</sup></font>
+            </b></p>
+          <p style="line-height:0.6" align="center">
+            <font color="061E61">Hong Kong University of Science and Technology<sup>1</sup></font>
+          </p>
+          <p style="line-height:0.6" align="center">
+            <font color="061E61"> <sup>2</sup>University of Surrey</font>
+          </p>
+          <p style="line-height:0.6" align="center">
+            <font color="061E61"> <sup>3</sup>Chinese University of Hong Kong</font>
+          </p>
+          <section itemprop="entry-text">
+            <br>
+            <!-- <div class="container">
+              <center>
+                <p><a href="https://arxiv.org/abs/2309.07314">[Paper on ArXiv]</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/haoheliu/versatile_audio_super_resolution">[Code on GitHub]</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://discord.gg/PCws9edF">[Discord Community]</a></p>
+              </center>
+            </div> -->
+            <h2 id="abstract">
+              <font color="000093">Abstract</font>
+            </h2>
+            <p style="text-align: justify;">
+              <font color="061E61"> 
+            Diffusion models have demonstrated remarkable success in generative tasks, including audio super-resolution (SR). In many applications like movie post-production and album mastering, substantial computational budgets are available for achieving superior audio quality. However, while existing diffusion approaches typically increase sampling steps to improve quality, the performance remains fundamentally limited by the stochastic nature of the sampling process, leading to high-variance and quality-limited outputs. Here, rather than simply increasing the number of sampling steps, we propose a different paradigm through inference-time scaling for SR, which explores multiple solution trajectories during the sampling process. Different task-specific verifiers are developed, and two search algorithms, including the random search and zero-order search for SR, are introduced. By actively guiding the exploration of the high-dimensional solution space through verifier-algorithm combinations, we enable more robust and higher-quality outputs. Through extensive validation across diverse audio domains (speech, music, sound effects) and frequency ranges, we demonstrate consistent performance gains, achieving improvements of up to 9.70% in aesthetics, 5.88% in speaker similarity, 15.20% in word error rate, and 46.98% in spectral distance for speech SR from 4 kHz to 24 kHz, showcasing the effectiveness of our approach.
+              </font>
+            </p>
+
+            <!-- <h2 id="note">
+              <font color="000093">Note</font>
+            </h2>
+            <li>
+              <font color="061E61"> AudioLDM generates text-conditional sound effects, human speech, and music.</font>
+            </li>
+            <li>
+              <font color="061E61"> The LDM is trained on a single GPU, without text supervision. </font>
+            </li>
+            <li>
+              <font color="061E61"> AudioLDM enables zero-shot text-guided audio style-transfer, inpainting, and
+                super-resolution.</font>
+            </li> -->
+
+			<br />
+
+			<div>
+			<figure>
+				<p align="center">
+				<img src="performance_gain.png" width="60%" class="center" />
+				</p>
+				<figcaption>
+				<p style="text-align: justify; margin:10px;">
+					<font color="061E61" style="font-size: 0.75em;"><b>Figure 1:</b>
+          Performance improvements over the LR input across different audio types using inference-time Random Search with various verifiers from 4 kHz to 24 kHz. The enhancement denotes the relative improvement over LR under each evaluation metric. For Aesthetics (AES), Speaker Similarity (SpkSim) and CLAP Score, enhancements reflect relative increases. For Word Error Rate (WER) and Log Spectrogram Distance (LSD), improvements are computed as relative reductions. 
+					</font>
+				</p>
+				</figcaption>
+			</figure>
+			</div>
+
+			<br />
+
+			<div>
+			<figure>
+				<p align="center">
+				<img src="scale_up.png" width="100%" class="center" />
+				</p>
+				<figcaption>
+				<p style="text-align: justify; padding:10px;">
+					<font color="061E61" style="font-size: 0.75em;"><b>Table 1:</b>
+          Relative performance improvements over the default generation (vanilla sampling) for speech from 4 kHz to 24 kHz in Random Search, demonstrating the effect of inference-time scaling across different verifier types. 
+          LSD, AES, SpkSim, and WER refer to Log Spectrogram Distance, Aesthetics Score, Speaker Similarity, and Word Error Rate, respectively. 
+          The Ensemble Verifier aggregates AES, SpkSim, and WER by averaging their rank scores. 
+					</font>
+				</p>
+				</figcaption>
+			</figure>
+			</div>
+            
+            
+            <!-- <table class="table" align="center" style="table-layout: fixed;word-break:break-word">
+              <thead>
+                <tr>
+                  <th scope="col" width="50%">
+                    <font color="061E61">One-minute overview for a quick-taste</font>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th><embed src="Sound Effects.mp4" autostart="false" width="35%" /></th>
+                  <th>
+                    <center>
+                      <video width="800" controls>
+                        <source src="Overview.mp4" type="video/mp4">
+                        Your browser does not support HTML video.
+                      </video>
+                      <p>The following sections show more demos.</p>
+                    </center>
+                    
+                  </th>
+                  
+                </tr>
+              </tbody>
+            </table> -->
+            
+
+            <br></br>
+            <h2 id="TTA Generation with Human Text Prompt" class="text-center">
+              <font color="000093">Audio Super-Resolution Results Comparison</font>
+            </h2>
+
+          <p><b>
+            <font color="061E61", style="font-size: 28px;">Speech:</font>
+          </b></p>
+
+        <table class="table text-center" align="center" style="table-layout: fixed;word-break:break-word">
+          <thead>
+            <tr>
+              <td scope="col" width="25%">
+                <font color="061E61">4 kHz Sample</font>
+              <td scope="col" width="25%">
+                <font color="061E61">Default Generation</font>
+              </td>
+              <td scope="col" width="25%">
+                <font color="061E61">Selected</font>
+              </td>
+              <td scope="col" width="25%">
+                <font color="061E61">Ground-Truth</font>
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/lp_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/lp_1.png" width="100%" height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/baseline_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/baseline_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/selected_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/selected_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/gt_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/gt_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+          </tr>
+
+            <tr>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/lp_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/lp_2.png" width="100%" height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+              
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/baseline_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/baseline_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/selected_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/selected_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/speech/gt_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/speech/gt_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+          </tr>
+
+          </tbody>
+        </table>
+
+
+          <p><b>
+            <font color="061E61", style="font-size: 28px;">Music:</font>
+          </b></p>
+
+
+        <table class="table text-center" align="center" style="table-layout: fixed;word-break:break-word">
+          <thead>
+            <tr>
+              <td scope="col" width="25%">
+                <font color="061E61">4 kHz Sample</font>
+              <td scope="col" width="25%">
+                <font color="061E61">Default Generation</font>
+              </td>
+              <td scope="col" width="25%">
+                <font color="061E61">Selected</font>
+              </td>
+              <td scope="col" width="25%">
+                <font color="061E61">Ground-Truth</font>
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/lp_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/lp_1.png" width="100%" height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/baseline_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/baseline_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/selected_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/selected_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/gt_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/gt_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+          </tr>
+
+            <tr>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/lp_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/lp_2.png" width="100%" height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+              
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/baseline_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/baseline_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/selected_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/selected_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/music/gt_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/music/gt_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+          </tr>
+
+          </tbody>
+        </table>
+
+          <p><b>
+            <font color="061E61", style="font-size: 28px;">Sound Effect:</font>
+          </b></p>
+
+        <table class="table text-center" align="center" style="table-layout: fixed;word-break:break-word">
+          <thead>
+            <tr>
+              <td scope="col" width="25%">
+                <font color="061E61">4 kHz Sample</font>
+              <td scope="col" width="25%">
+                <font color="061E61">Default Generation</font>
+              </td>
+              <td scope="col" width="25%">
+                <font color="061E61">Selected</font>
+              </td>
+              <td scope="col" width="25%">
+                <font color="061E61">Ground-Truth</font>
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/lp_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/lp_1.png" width="100%" height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/baseline_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/baseline_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/selected_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/selected_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/gt_1.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/gt_1.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+          </tr>
+
+            <tr>
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/lp_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/lp_2.png" width="100%" height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+              
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/baseline_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/baseline_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/selected_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/selected_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+
+              <td scope="row" width="25%">
+                <div>
+                <audio controls="controls" style="width: 100%;">
+                  <source src="audio_samples/sound_effect/gt_2.wav" />Your browser does not support the audio element.
+                </audio>
+                </div> 
+                <div>
+                  <figure>
+                    <p align="center"><img src="figures/sound_effect/gt_2.png" width="100%"  height="120px" class="center" /></p>
+                  </figure>
+                </div> 
+              </td>
+          </tr>
+
+          </tbody>
+        </table>
+
+        </table>
+            <p> More demos are on their way. Stay tuned for more updates.</p>
+          </section>
+        </article>
+      </main>
+
+    </div>
+
+    <script>
+      (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+          (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+          m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+      })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+      ga('create', 'UA-139981676-1', 'auto');
+      ga('send', 'pageview');
+    </script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+
+
+    <script type="text/x-mathjax-config">
+     MathJax.Hub.Config({
+         HTML: ["input/TeX","output/HTML-CSS"],
+         TeX: {
+                Macros: {
+                         bm: ["\\boldsymbol{#1}", 1],
+                         argmax: ["\\mathop{\\rm arg\\,max}\\limits"],
+                         argmin: ["\\mathop{\\rm arg\\,min}\\limits"]},
+                extensions: ["AMSmath.js","AMSsymbols.js"],
+                equationNumbers: { autoNumber: "AMS" } },
+         extensions: ["tex2jax.js"],
+         jax: ["input/TeX","output/HTML-CSS"],
+         tex2jax: { inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                    displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+                    processEscapes: true },
+         "HTML-CSS": { availableFonts: ["TeX"],
+                       linebreaks: { automatic: true } }
+     });
+ </script>
+
+    <script type="text/x-mathjax-config">
+     MathJax.Hub.Config({
+       tex2jax: {
+         skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+       }
+     });
+ </script>
+
+    <script type="text/javascript" async
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML">
+      </script>
+
+
+
+
+</body>
+
+</html>
